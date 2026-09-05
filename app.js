@@ -40,6 +40,77 @@ let timerInterval = null;
 let timeLeft = 5;
 const gridState = Array(5).fill(null).map(() => Array(5).fill(null));
 
+// نظام توليد المؤثرات الصوتية برمجياً
+const AudioFX = {
+  ctx: null,
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  },
+  // صوت رنين البازر (Ding حاد وقوي)
+  buzzer() {
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(880, this.ctx.currentTime); // نغمة A5
+    osc.frequency.exponentialRampToValueAtTime(1760, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.4);
+  },
+  // صوت تكتكة المؤقت (Tick قصير)
+  tick() {
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.08);
+  },
+  // صوت انتهاء الوقت (Buzzer خاسر)
+  timeOut() {
+    this.init();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(110, this.ctx.currentTime + 0.5);
+    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.5);
+  },
+  // نغمة احتفالية متصاعدة عند الفوز بالمسار
+  victory() {
+    this.init();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    notes.forEach((freq, index) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + index * 0.12);
+      gain.gain.setValueAtTime(0.3, this.ctx.currentTime + index * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + index * 0.12 + 0.35);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(this.ctx.currentTime + index * 0.12);
+      osc.stop(this.ctx.currentTime + index * 0.12 + 0.35);
+    });
+  }
+};
+
 // رسم الشبكة 5x5
 arabicLetters.forEach((letter, index) => {
   const row = Math.floor(index / 5);
@@ -76,9 +147,12 @@ function startTimer() {
     timeLeft--;
     if (timerDisplay) timerDisplay.innerText = `الوقت: ${timeLeft} ثواني`;
 
-    if (timeLeft <= 0) {
+    if (timeLeft > 0) {
+      AudioFX.tick(); // تكتكة المؤقت
+    } else {
       clearInterval(timerInterval);
       if (timerDisplay) timerDisplay.innerText = "انتهى الوقت!";
+      AudioFX.timeOut(); // صوت انتهاء الوقت
     }
   }, 1000);
 }
@@ -106,6 +180,15 @@ db.ref('game/buzzer').on('value', (snapshot) => {
   if (data && data.winner && buzzerStatus) {
     buzzerStatus.innerText = `🔔 ضغط البازر أولاً: ${data.winner} (الفريق ${data.team === 'green' ? 'الأخضر' : 'الأحمر'})`;
     buzzerStatus.style.background = data.team === 'green' ? '#27ae60' : '#c0392b';
+    db.ref('game/buzzer').on('value', (snapshot) => {
+  const data = snapshot.val();
+  if (data && data.winner && buzzerStatus) {
+    buzzerStatus.innerText = `🔔 ضغط البازر أولاً: ${data.winner} (الفريق ${data.team === 'green' ? 'الأخضر' : 'الأحمر'})`;
+    buzzerStatus.style.background = data.team === 'green' ? '#27ae60' : '#c0392b';
+    AudioFX.buzzer(); // صوت رنين البازر
+    startTimer();
+  }
+});
     startTimer();
   }
 });
@@ -116,6 +199,12 @@ function setCellColor(color) {
     alert('يرجى اختيار خانة أولاً');
     return;
   }
+  if (checkWin(color)) {
+  AudioFX.victory(); // صوت احتفال الفوز
+  setTimeout(() => {
+    alert(`🎉 ألف مبروك! فاز الفريق ${color === 'green' ? 'الأخضر' : 'الأحمر'} بإكمال المسار!`);
+  }, 300);
+}
 
   clearInterval(timerInterval);
   const r = parseInt(activeCell.dataset.row);
