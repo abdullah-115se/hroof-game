@@ -47,7 +47,15 @@ const AudioFX = {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    // استئناف تشغيل الصوت إذا كان المتصفح مجمّداً له
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
   },
+  // فك قفل الصوت بالمتصفح مع أول نقرة على الشاشة
+document.addEventListener('click', () => {
+  AudioFX.init();
+}, { once: true });
   // صوت رنين البازر (Ding حاد وقوي)
   buzzer() {
     this.init();
