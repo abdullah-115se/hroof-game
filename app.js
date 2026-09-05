@@ -4,7 +4,7 @@ if (!firebase.apps.length) {
   const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    databaseURL: "https://hroof-game-89a4d-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "YOUR_PROJECT_ID",
     storageBucket: "YOUR_PROJECT_ID.appspot.com",
     messagingSenderId: "YOUR_SENDER_ID",
@@ -156,7 +156,17 @@ window.resetBuzzer = function() {
     buzzerStatus.innerText = "البازر متاح الآن! بانتظار أسرع لاعب...";
     buzzerStatus.style.background = "#333";
   }
-  db.ref('game/buzzer').set({ active: true, winner: null, team: null });
+  
+  // تصفير مباشر وحذف اسم الفائز من السيرفر
+  db.ref('game/buzzer').set({
+    active: true,
+    winner: null,
+    team: null
+  }).then(() => {
+    console.log("تمت إعادة تفعيل البازر ومسح الفائز بنجاح");
+  }).catch((err) => {
+    alert("خطأ في إعادة التفعيل: " + err.message);
+  });
 };
 
 window.setCellColor = function(color) {
