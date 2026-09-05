@@ -115,17 +115,18 @@
     });
 
     // دالة ضغط الزر
+   // دالة ضغط الزر
     function pressBuzzer() {
       const nameInput = document.getElementById('playerName');
       const teamInput = document.getElementById('playerTeam');
       const msg = document.getElementById('msg');
 
-      const playerName = nameInput.value.trim();
-      const playerTeam = teamInput.value;
+      const playerName = nameInput ? nameInput.value.trim() : "";
+      const playerTeam = teamInput ? teamInput.value : "green";
 
       if (!playerName) {
         alert('يرجى كتابة اسمك أولاً!');
-        nameInput.focus();
+        if (nameInput) nameInput.focus();
         return;
       }
 
@@ -135,8 +136,8 @@
       const buzzerRef = db.ref('game/buzzer');
 
       buzzerRef.transaction((currentData) => {
-        // إذا كان البازر متاحاً ولا يوجد فائز بعد
-        if (!currentData || (!currentData.winner && currentData.active !== false)) {
+        // إذا لم يكن هناك فائز مسجل (سواء كانت البيانات فارغة أو الفائز null أو فاضي)
+        if (!currentData || !currentData.winner) {
           return {
             active: false,
             winner: playerName,
@@ -144,17 +145,19 @@
             timestamp: Date.now()
           };
         }
-        return undefined; // إلغاء إذا كان هناك فائز بالفعل
+        // إذا كان هناك فائز مسجل بالفعل، ألغِ العملية
+        return undefined;
       }, (error, committed, snapshot) => {
         if (error) {
-          alert("خطأ في الاتصال بقاعدة البيانات: " + error.message);
+          alert("خطأ في الاتصال: " + error.message);
           msg.innerText = "❌ تعذر الاتصال بالقاعدة!";
           msg.style.color = "#e74c3c";
         } else if (committed) {
           msg.innerText = "🎯 مبروك! أنت أول من ضغط!";
           msg.style.color = "#2ecc71";
         } else {
-          const winner = snapshot && snapshot.val() ? snapshot.val().winner : "لاعب آخر";
+          const val = snapshot ? snapshot.val() : null;
+          const winner = (val && val.winner) ? val.winner : "لاعب آخر";
           msg.innerText = `❌ سبقك بالضغط: ${winner}`;
           msg.style.color = "#e74c3c";
         }
