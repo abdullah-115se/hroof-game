@@ -125,14 +125,19 @@ db.ref('game/buzzer').on('value', (snapshot) => {
 
 // دالة ضغط الزر باستخدام المعاملات (Transaction) لمنع التضارب
 function pressBuzzer() {
-  const statusMsg = document.getElementById('statusMsg');
-  const buzzerRef = db.ref('game/buzzer');
+  alert("1- تم لمس الزر بنجاح!");
 
-  // إظهار استجابة فورية للمس الزر
-  if (statusMsg) statusMsg.innerText = "جاري الإرسال...";
+  // التأكد من تهيئة قاعدة البيانات
+  if (typeof db === 'undefined' || !db) {
+    alert("خطأ: الاتصال بقاعدة بيانات Firebase غير معرّف!");
+    return;
+  }
+
+  const buzzerRef = db.ref('game/buzzer');
+  alert("2- جاري إرسال الطلب لـ Firebase...");
 
   buzzerRef.transaction((currentData) => {
-    // يقبل الضغطة إذا لم يكن هناك فائز مسجل
+    alert("3- تم استقبال المعاملة من السيرفر!");
     if (!currentData || !currentData.winner) {
       return {
         active: false,
@@ -141,27 +146,14 @@ function pressBuzzer() {
         timestamp: Date.now()
       };
     }
-    // إذا كان هناك فائز بالفعل، يلغي العملية
     return undefined;
-  }, (error, committed, snapshot) => {
+  }, (error, committed) => {
     if (error) {
-      console.error("Firebase Error:", error);
-      if (statusMsg) {
-        statusMsg.innerText = "❌ خطأ في الاتصال بقاعدة البيانات!";
-        statusMsg.style.color = "#e74c3c";
-      }
-      alert("خطأ Firebase: " + error.message);
+      alert("فشل بسبب خطأ في الصلاحيات أو الشبكة: " + error.message);
     } else if (committed) {
-      if (statusMsg) {
-        statusMsg.innerText = "🎯 مبروك! أنت أول من ضغط!";
-        statusMsg.style.color = "#2ecc71";
-      }
+      alert("4- مبروك! سجلت أولاً!");
     } else {
-      if (statusMsg) {
-        const winnerName = snapshot && snapshot.val() ? snapshot.val().winner : "لاعب آخر";
-        statusMsg.innerText = `❌ سبقك بالضغط: ${winnerName}`;
-        statusMsg.style.color = "#e74c3c";
-      }
+      alert("4- لم يتم التسجيل (سبقك شخص آخر أو البازر مقفل)");
     }
   });
 }
