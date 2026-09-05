@@ -101,27 +101,50 @@
     return;
   }
 
+ // الاستماع لحالة البازر لتفعيل أو تعطيل الزر تلقائياً
+db.ref('game/buzzer').on('value', (snapshot) => {
+  const data = snapshot.val();
+  const buzzerBtn = document.getElementById('buzzerBtn');
+  const statusMsg = document.getElementById('statusMsg');
+
+  if (!data || data.winner) {
+    // إذا كان هناك فائز مسجل
+    if (data && data.winner === playerName) {
+      statusMsg.innerText = "أنت أول من ضغط! دورك في الإجابة";
+      statusMsg.style.color = "#2ecc71";
+    } else {
+      statusMsg.innerText = "سبقك لاعب آخر!";
+      statusMsg.style.color = "#e74c3c";
+    }
+  } else {
+    // البازر متاح وجاهز للضغط
+    statusMsg.innerText = "البازر جاهز! استعد للضغط";
+    statusMsg.style.color = "#f1c40f";
+  }
+});
+
+// دالة ضغط الزر باستخدام المعاملات (Transaction) لمنع التضارب
+function pressBuzzer() {
   const buzzerRef = db.ref('game/buzzer');
 
   buzzerRef.transaction((currentData) => {
-    // إذا كانت البيانات فارغة أو البازر نشط ولا يوجد فائز
-    if (!currentData || (currentData.active && !currentData.winner)) {
+    // إذا لم يكن هناك فائز بعد، سجل هذا اللاعب فوراً
+    if (!currentData || !currentData.winner) {
       return {
         active: false,
-        winner: name,
-        team: team
+        winner: playerName,
+        team: playerTeam,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
       };
     }
-    return; // إذا تم الضغط مسبقاً
+    // إذا كان هناك فائز مسجل مسبقاً، ارفض المحاولة
+    return undefined;
   }, (error, committed) => {
     if (committed) {
-      msg.innerText = "🎯 مبروك! حصلت على الدور!";
-      msg.style.color = "#2ecc71";
-    } else {
-      msg.innerText = "❌ شخص آخر سبقك بالضغط أو البازر مغلق!";
-      msg.style.color = "#e74c3c";
+      console.log("تم تسجيلك أولاً بنجاح!");
     }
   });
+}
 }
   </script>
 </body>
