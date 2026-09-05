@@ -235,13 +235,30 @@ function checkWin(color) {
   return false;
 }
 
-// استماع البازر اللحظي
+// الاستماع اللحظي للبازر في شاشة الهوست
 db.ref('game/buzzer').on('value', (snapshot) => {
   const data = snapshot.val();
-  if (data && data.winner && buzzerStatus) {
-    buzzerStatus.innerText = `🔔 ضغط البازر أولاً: ${data.winner} (الفريق ${data.team === 'green' ? 'الأخضر' : 'الأحمر'})`;
-    buzzerStatus.style.background = data.team === 'green' ? '#27ae60' : '#c0392b';
-    AudioFX.buzzer();
+  const statusEl = document.getElementById('buzzerStatus');
+
+  if (data && data.winner) {
+    // 1. تحديث النص والخلفية بلون الفريق
+    const teamName = data.team === 'green' ? 'الأخضر' : 'الأحمر';
+    const teamBg = data.team === 'green' ? '#27ae60' : '#c0392b';
+
+    if (statusEl) {
+      statusEl.innerText = `🔔 ضغط أولاً: ${data.winner} (الفريق ${teamName})`;
+      statusEl.style.backgroundColor = teamBg;
+      statusEl.style.color = '#fff';
+      statusEl.style.padding = '10px';
+      statusEl.style.borderRadius = '8px';
+    }
+
+    // 2. تشغيل صوت البازر
+    if (typeof AudioFX !== 'undefined') {
+      AudioFX.buzzer();
+    }
+
+    // 3. بدء العد التنازلي (5 ثوانٍ)
     startTimer();
   }
 });
