@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بازر اللاعب - لعبة حروف</title>
+  
+  <!-- مكتبات Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    input, select {
+      padding: 12px;
+      font-size: 1.1rem;
+      border-radius: 8px;
+      border: 1px solid #444;
+      margin-bottom: 15px;
+      width: 85%;
+      max-width: 320px;
+      text-align: center;
+      background: #2a2a2a;
+      color: #fff;
+    }
+    .buzz-btn {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      border: none;
+      background: radial-gradient(circle, #e74c3c, #c0392b);
+      color: #fff;
+      font-size: 2.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(231, 76, 60, 0.5);
+      transition: transform 0.1s;
+      margin-top: 10px;
+    }
+    .buzz-btn:active {
+      transform: scale(0.92);
+    }
+    #msg {
+      margin-top: 25px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      min-height: 30px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>بازر حروف</h2>
+  
+  <input type="text" id="playerName" placeholder="اكتب اسمك هنا">
+  
+  <select id="playerTeam">
+    <option value="green">الفريق الأخضر</option>
+    <option value="red">الفريق الأحمر</option>
+  </select>
+
+  <button class="buzz-btn" onclick="pressBuzzer()">جاوب!</button>
+  
+  <div id="msg"></div>
+
+  <script>
+    // إعدادات Firebase الخاصة بمشروعك
+    const firebaseConfig = {
+      apiKey: "AIzaSyDoaUuh2g7Ey3xKULKY1cqCsFp0ayV8LYM",
+      authDomain: "hroof-game-89a4d.firebaseapp.com",
+      databaseURL: "https://hroof-game-89a4d-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "hroof-game-89a4d",
+      storageBucket: "hroof-game-89a4d.firebasestorage.app",
+      messagingSenderId: "289753652476",
+      appId: "1:289753652476:web:cf0de09e5c657a22c60b79",
+      measurementId: "G-8G7SXXV8JS"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+   function pressBuzzer() {
+  const name = document.getElementById('playerName').value.trim();
+  const team = document.getElementById('playerTeam').value;
+  const msg = document.getElementById('msg');
+
+  if (!name) {
+    alert('يرجى كتابة اسمك أولاً');
+    return;
+  }
+
+  const buzzerRef = db.ref('game/buzzer');
+
+  buzzerRef.transaction((currentData) => {
+    // إذا كانت البيانات فارغة أو البازر نشط ولا يوجد فائز
+    if (!currentData || (currentData.active && !currentData.winner)) {
+      return {
+        active: false,
+        winner: name,
+        team: team
+      };
+    }
+    return; // إذا تم الضغط مسبقاً
+  }, (error, committed) => {
+    if (committed) {
+      msg.innerText = "🎯 مبروك! حصلت على الدور!";
+      msg.style.color = "#2ecc71";
+    } else {
+      msg.innerText = "❌ شخص آخر سبقك بالضغط أو البازر مغلق!";
+      msg.style.color = "#e74c3c";
+    }
+  });
+}
+  </script>
+</body>
+</html>

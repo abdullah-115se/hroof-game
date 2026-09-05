@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>لعبة حروف - شاشة العرض</title>
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- مكتبات Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  
+  <!-- مكتبة توليد الـ QR Code -->
+  <!-- في ملف index.html -->
+<!-- استبدل هذا السطر -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> -->
+
+<!-- بهذا السطر (في قسم head) -->
+<script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.min.js"></script>
+</head>
+<body>
+  <div class="main-layout">
+    <!-- حاوية اللعبة الرئيسية -->
+    <div class="game-container">
+      <h1>مسابقة حروف</h1>
+      
+      <div class="timer" id="timer">الوقت: 5 ثواني</div>
+      <div class="question-box" id="questionBox">اختر حرفاً لبدء السؤال</div>
+      <div class="buzzer-status" id="buzzerStatus">في انتظار الضغط على البازر...</div>
+      
+      <div class="board" id="board"></div>
+
+      <div class="controls">
+        <button class="btn green-btn" onclick="setCellColor('green')">فوز الأخضر</button>
+        <button class="btn red-btn" onclick="setCellColor('red')">فوز الأحمر</button>
+        <button class="btn reset-btn" onclick="setCellColor('neutral')">إلغاء الخانة</button>
+        <button class="btn" style="background:#f39c12; color:#fff;" onclick="resetBuzzer()">إعادة تفعيل البازر</button>
+      </div>
+    </div>
+
+    <!-- بطاقة باركود انضمام اللاعبين -->
+    <div class="qr-container">
+      <h3>امسح للدخول وبدء اللعب</h3>
+      <div id="qrcode"></div>
+      <p>أو افتح صفحة البازر على هاتفك</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
