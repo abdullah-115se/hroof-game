@@ -1,14 +1,14 @@
 // --- 1. إعداد Firebase ---
-// ضع كائن firebaseConfig الخاص بك هنا إن لم يكن موجوداً في ملف HTML
 if (!firebase.apps.length) {
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    apiKey: "AIzaSyDoaUuh2g7Ey3xKULKY1cqCsFp0ayV8LYM",
+    authDomain: "hroof-game-89a4d.firebaseapp.com",
     databaseURL: "https://hroof-game-89a4d-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    projectId: "hroof-game-89a4d",
+    storageBucket: "hroof-game-89a4d.firebasestorage.app",
+    messagingSenderId: "289753652476",
+    appId: "1:289753652476:web:cf0de09e5c657a22c60b79",
+    measurementId: "G-8G7SXXV8JS"
   };
   firebase.initializeApp(firebaseConfig);
 }
@@ -100,7 +100,9 @@ const letters = [
 
 let selectedIndex = null;
 let timerInterval = null;
+let timerDefaultDuration = 5; // المدة الافتراضية
 let timeLeft = 5;
+let isMuted = false;
 const gridState = Array(25).fill(null);
 
 const board = document.getElementById('board');
@@ -130,9 +132,24 @@ function selectCell(index, cellElement) {
   resetBuzzer();
 }
 
+// دالة تعديل مدة المؤقت
+window.updateTimerDuration = function(val) {
+  timerDefaultDuration = parseInt(val, 10);
+  timeLeft = timerDefaultDuration;
+  if (timerDisplay) {
+    timerDisplay.innerText = `الوقت: ${timeLeft} ثواني`;
+  }
+};
+
+// دالة كتم/تشغيل الصوت
+window.toggleSound = function(muted) {
+  isMuted = muted;
+};
+
+// تشغيل العداد
 function startTimer() {
   clearInterval(timerInterval);
-  timeLeft = 5;
+  timeLeft = timerDefaultDuration;
   if (timerDisplay) timerDisplay.innerText = `الوقت: ${timeLeft} ثواني`;
 
   timerInterval = setInterval(() => {
@@ -140,35 +157,35 @@ function startTimer() {
     if (timerDisplay) timerDisplay.innerText = `الوقت: ${timeLeft} ثواني`;
 
     if (timeLeft > 0) {
-      AudioFX.tick();
+      if (!isMuted) AudioFX.tick();
     } else {
       clearInterval(timerInterval);
       if (timerDisplay) timerDisplay.innerText = "انتهى الوقت!";
-      AudioFX.timeOut();
+      if (!isMuted) AudioFX.timeOut();
     }
   }, 1000);
 }
 
+// إعادة تفعيل البازر
 window.resetBuzzer = function() {
   clearInterval(timerInterval);
-  if (timerDisplay) timerDisplay.innerText = "الوقت: 5 ثواني";
+  timeLeft = timerDefaultDuration;
+  if (timerDisplay) timerDisplay.innerText = `الوقت: ${timeLeft} ثواني`;
   if (buzzerStatus) {
     buzzerStatus.innerText = "البازر متاح الآن! بانتظار أسرع لاعب...";
     buzzerStatus.style.background = "#333";
   }
   
-  // تصفير مباشر وحذف اسم الفائز من السيرفر
   db.ref('game/buzzer').set({
     active: true,
     winner: null,
     team: null
-  }).then(() => {
-    console.log("تمت إعادة تفعيل البازر ومسح الفائز بنجاح");
   }).catch((err) => {
     alert("خطأ في إعادة التفعيل: " + err.message);
   });
 };
 
+// تلوين الخانات
 window.setCellColor = function(color) {
   if (selectedIndex === null) return;
   const cells = document.querySelectorAll('.cell');
@@ -187,11 +204,23 @@ window.setCellColor = function(color) {
   }
 
   if (checkWin(color)) {
-    AudioFX.victory();
+    if (!isMuted) AudioFX.victory();
     setTimeout(() => {
       alert(`🎉 ألف مبروك! فاز الفريق ${color === 'green' ? 'الأخضر' : 'الأحمر'}!`);
     }, 200);
   }
+};
+
+// تصفير اللوحة بالكامل
+window.resetFullGame = function() {
+  if (!confirm("هل أنت متأكد من تصفير اللوحة بالكامل والبدء من جديد؟")) return;
+  gridState.fill(null);
+  selectedIndex = null;
+  document.querySelectorAll('.cell').forEach(c => {
+    c.classList.remove('green', 'red', 'selected');
+  });
+  if (questionBox) questionBox.innerText = "اختر حرفاً لبدء السؤال";
+  resetBuzzer();
 };
 
 function checkWin(color) {
@@ -241,7 +270,6 @@ db.ref('game/buzzer').on('value', (snapshot) => {
   const statusEl = document.getElementById('buzzerStatus');
 
   if (data && data.winner) {
-    // 1. تحديث النص والخلفية بلون الفريق
     const teamName = data.team === 'green' ? 'الأخضر' : 'الأحمر';
     const teamBg = data.team === 'green' ? '#27ae60' : '#c0392b';
 
@@ -253,12 +281,10 @@ db.ref('game/buzzer').on('value', (snapshot) => {
       statusEl.style.borderRadius = '8px';
     }
 
-    // 2. تشغيل صوت البازر
-    if (typeof AudioFX !== 'undefined') {
+    if (!isMuted && typeof AudioFX !== 'undefined') {
       AudioFX.buzzer();
     }
 
-    // 3. بدء العد التنازلي (5 ثوانٍ)
     startTimer();
   }
 });
