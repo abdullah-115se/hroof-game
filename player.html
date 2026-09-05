@@ -75,7 +75,7 @@
   
   <div id="msg"></div>
 
-  <script>
+<script>
     // إعدادات Firebase الخاصة بمشروعك
     const firebaseConfig = {
       apiKey: "AIzaSyDoaUuh2g7Ey3xKULKY1cqCsFp0ayV8LYM",
@@ -91,72 +91,75 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-   function pressBuzzer() {
-  const name = document.getElementById('playerName').value.trim();
-  const team = document.getElementById('playerTeam').value;
-  const msg = document.getElementById('msg');
+    // مراقبة حالة البازر وتحديث الرسالة تلقائياً
+    db.ref('game/buzzer').on('value', (snapshot) => {
+      const data = snapshot.val();
+      const nameInput = document.getElementById('playerName');
+      const currentName = nameInput ? nameInput.value.trim() : "";
+      const msg = document.getElementById('msg');
 
-  if (!name) {
-    alert('يرجى كتابة اسمك أولاً');
-    return;
-  }
+      if (!msg) return;
 
- // الاستماع لحالة البازر لتفعيل أو تعطيل الزر تلقائياً
-db.ref('game/buzzer').on('value', (snapshot) => {
-  const data = snapshot.val();
-  const buzzerBtn = document.getElementById('buzzerBtn');
-  const statusMsg = document.getElementById('statusMsg');
+      if (data && data.winner) {
+        if (currentName && data.winner === currentName) {
+          msg.innerText = "🎯 مبروك! أنت أول من ضغط، جاوب الآن!";
+          msg.style.color = "#2ecc71";
+        } else {
+          msg.innerText = `❌ سبقك اللاعب (${data.winner})!`;
+          msg.style.color = "#e74c3c";
+        }
+      } else {
+        msg.innerText = "⚡ البازر متاح! استعد للضغط";
+        msg.style.color = "#f1c40f";
+      }
+    });
 
-  if (!data || data.winner) {
-    // إذا كان هناك فائز مسجل
-    if (data && data.winner === playerName) {
-      statusMsg.innerText = "أنت أول من ضغط! دورك في الإجابة";
-      statusMsg.style.color = "#2ecc71";
-    } else {
-      statusMsg.innerText = "سبقك لاعب آخر!";
-      statusMsg.style.color = "#e74c3c";
+    // دالة ضغط الزر
+    function pressBuzzer() {
+      const nameInput = document.getElementById('playerName');
+      const teamInput = document.getElementById('playerTeam');
+      const msg = document.getElementById('msg');
+
+      const playerName = nameInput.value.trim();
+      const playerTeam = teamInput.value;
+
+      if (!playerName) {
+        alert('يرجى كتابة اسمك أولاً!');
+        nameInput.focus();
+        return;
+      }
+
+      msg.innerText = "جاري الإرسال...";
+      msg.style.color = "#fff";
+
+      const buzzerRef = db.ref('game/buzzer');
+
+      buzzerRef.transaction((currentData) => {
+        // إذا كان البازر متاحاً ولا يوجد فائز بعد
+        if (!currentData || (!currentData.winner && currentData.active !== false)) {
+          return {
+            active: false,
+            winner: playerName,
+            team: playerTeam,
+            timestamp: Date.now()
+          };
+        }
+        return undefined; // إلغاء إذا كان هناك فائز بالفعل
+      }, (error, committed, snapshot) => {
+        if (error) {
+          alert("خطأ في الاتصال بقاعدة البيانات: " + error.message);
+          msg.innerText = "❌ تعذر الاتصال بالقاعدة!";
+          msg.style.color = "#e74c3c";
+        } else if (committed) {
+          msg.innerText = "🎯 مبروك! أنت أول من ضغط!";
+          msg.style.color = "#2ecc71";
+        } else {
+          const winner = snapshot && snapshot.val() ? snapshot.val().winner : "لاعب آخر";
+          msg.innerText = `❌ سبقك بالضغط: ${winner}`;
+          msg.style.color = "#e74c3c";
+        }
+      });
     }
-  } else {
-    // البازر متاح وجاهز للضغط
-    statusMsg.innerText = "البازر جاهز! استعد للضغط";
-    statusMsg.style.color = "#f1c40f";
-  }
-});
-
-// دالة ضغط الزر باستخدام المعاملات (Transaction) لمنع التضارب
-function pressBuzzer() {
-  alert("1- تم لمس الزر بنجاح!");
-
-  // التأكد من تهيئة قاعدة البيانات
-  if (typeof db === 'undefined' || !db) {
-    alert("خطأ: الاتصال بقاعدة بيانات Firebase غير معرّف!");
-    return;
-  }
-
-  const buzzerRef = db.ref('game/buzzer');
-  alert("2- جاري إرسال الطلب لـ Firebase...");
-
-  buzzerRef.transaction((currentData) => {
-    alert("3- تم استقبال المعاملة من السيرفر!");
-    if (!currentData || !currentData.winner) {
-      return {
-        active: false,
-        winner: currentName || "لاعب",
-        team: currentTeam || "green",
-        timestamp: Date.now()
-      };
-    }
-    return undefined;
-  }, (error, committed) => {
-    if (error) {
-      alert("فشل بسبب خطأ في الصلاحيات أو الشبكة: " + error.message);
-    } else if (committed) {
-      alert("4- مبروك! سجلت أولاً!");
-    } else {
-      alert("4- لم يتم التسجيل (سبقك شخص آخر أو البازر مقفل)");
-    }
-  });
-}
   </script>
 </body>
 </html>
