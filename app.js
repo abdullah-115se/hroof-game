@@ -1,79 +1,50 @@
-// بيانات الربط مع Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyDoaUuh2g7Ey3xKULKY1cqCsFp0ayV8LYM",
-  authDomain: "hroof-game-89a4d.firebaseapp.com",
-  databaseURL: "https://hroof-game-89a4d-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "hroof-game-89a4d",
-  storageBucket: "hroof-game-89a4d.firebasestorage.app",
-  messagingSenderId: "289753652476",
-  appId: "1:289753652476:web:cf0de09e5c657a22c60b79",
-  measurementId: "G-8G7SXXV8JS"
-};
-
-// تهيئة Firebase
-firebase.initializeApp(firebaseConfig);
+// --- 1. إعداد Firebase ---
+// ضع كائن firebaseConfig الخاص بك هنا إن لم يكن موجوداً في ملف HTML
+if (!firebase.apps.length) {
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.database();
 
-const arabicLetters = [
-  'أ', 'ب', 'ت', 'ث', 'ج',
-  'ح', 'خ', 'د', 'ذ', 'ر',
-  'ز', 'س', 'ش', 'ص', 'ض',
-  'ط', 'ظ', 'ع', 'غ', 'ف',
-  'ق', 'ك', 'ل', 'م', 'ن'
-];
-
-const questionsBank = {
-  'أ': 'عاصمة الأردن؟ (عمان)',
-  'ب': 'عاصمة فرنسا؟ (باريس)',
-  'ت': 'دولة عربية في شمال إفريقيا؟ (تونس)',
-  'ج': 'عاصمة الجزائر؟ (الجزائر)',
-  'ح': 'ثاني أكبر مدن سوريا؟ (حلب)',
-};
-
-const board = document.getElementById('board');
-const questionBox = document.getElementById('questionBox');
-const timerDisplay = document.getElementById('timer');
-const buzzerStatus = document.getElementById('buzzerStatus');
-
-let activeCell = null;
-let timerInterval = null;
-let timeLeft = 5;
-const gridState = Array(5).fill(null).map(() => Array(5).fill(null));
-
-// نظام توليد المؤثرات الصوتية برمجياً
+// --- 2. المؤثرات الصوتية ---
 const AudioFX = {
   ctx: null,
-  init() {
+  init: function() {
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        this.ctx = new AudioContextClass();
+      }
     }
-    // استئناف تشغيل الصوت إذا كان المتصفح مجمّداً له
-    if (this.ctx.state === 'suspended') {
+    if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
   },
-  // فك قفل الصوت بالمتصفح مع أول نقرة على الشاشة
-document.addEventListener('click', () => {
-  AudioFX.init();
-}, { once: true });
-  // صوت رنين البازر (Ding حاد وقوي)
-  buzzer() {
+  buzzer: function() {
     this.init();
+    if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(880, this.ctx.currentTime); // نغمة A5
-    osc.frequency.exponentialRampToValueAtTime(1760, this.ctx.currentTime + 0.15);
+    osc.frequency.setValueAtTime(880, this.ctx.currentTime);
     gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
     osc.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start();
-    osc.stop(this.ctx.currentTime + 0.4);
+    osc.stop(this.ctx.currentTime + 0.3);
   },
-  // صوت تكتكة المؤقت (Tick قصير)
-  tick() {
+  tick: function() {
     this.init();
+    if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sine';
@@ -85,67 +56,80 @@ document.addEventListener('click', () => {
     osc.start();
     osc.stop(this.ctx.currentTime + 0.08);
   },
-  // صوت انتهاء الوقت (Buzzer خاسر)
-  timeOut() {
+  timeOut: function() {
     this.init();
+    if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(180, this.ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(110, this.ctx.currentTime + 0.5);
     gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
     osc.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start();
-    osc.stop(this.ctx.currentTime + 0.5);
+    osc.stop(this.ctx.currentTime + 0.4);
   },
-  // نغمة احتفالية متصاعدة عند الفوز بالمسار
-  victory() {
+  victory: function() {
     this.init();
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    notes.forEach((freq, index) => {
+    if (!this.ctx) return;
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + index * 0.12);
-      gain.gain.setValueAtTime(0.3, this.ctx.currentTime + index * 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + index * 0.12 + 0.35);
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.12);
+      gain.gain.setValueAtTime(0.3, this.ctx.currentTime + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.12 + 0.3);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
-      osc.start(this.ctx.currentTime + index * 0.12);
-      osc.stop(this.ctx.currentTime + index * 0.12 + 0.35);
+      osc.start(this.ctx.currentTime + idx * 0.12);
+      osc.stop(this.ctx.currentTime + idx * 0.12 + 0.3);
     });
   }
 };
 
-// رسم الشبكة 5x5
-arabicLetters.forEach((letter, index) => {
-  const row = Math.floor(index / 5);
-  const col = index % 5;
+// --- 3. متغيرات وحالة اللعبة ---
+const letters = [
+  'أ', 'ب', 'ت', 'ث', 'ج',
+  'ح', 'خ', 'د', 'ذ', 'ر',
+  'ز', 'س', 'ش', 'ص', 'ض',
+  'ط', 'ظ', 'ع', 'غ', 'ف',
+  'ق', 'ك', 'ل', 'م', 'ن'
+];
 
-  const cell = document.createElement('div');
-  cell.classList.add('cell');
-  cell.innerText = letter;
-  cell.dataset.row = row;
-  cell.dataset.col = col;
+let selectedIndex = null;
+let timerInterval = null;
+let timeLeft = 5;
+const gridState = Array(25).fill(null);
 
-  cell.addEventListener('click', () => {
-    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-    cell.classList.add('selected');
-    activeCell = cell;
+const board = document.getElementById('board');
+const timerDisplay = document.getElementById('timer');
+const questionBox = document.getElementById('questionBox');
+const buzzerStatus = document.getElementById('buzzerStatus');
 
-    const q = questionsBank[letter] || `سؤال يبدأ بحرف (${letter})؟`;
-    questionBox.innerText = q;
-
-    // فتح البازر وإعادة ضبط السؤال في Firebase
-    resetBuzzer();
+// بناء اللوحة
+function createBoard() {
+  if (!board) return;
+  board.innerHTML = '';
+  letters.forEach((letter, index) => {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+    cell.innerText = letter;
+    cell.onclick = function() { selectCell(index, cell); };
+    board.appendChild(cell);
   });
+}
 
-  board.appendChild(cell);
-});
+function selectCell(index, cellElement) {
+  AudioFX.init();
+  selectedIndex = index;
+  document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+  cellElement.classList.add('selected');
+  if (questionBox) questionBox.innerText = `سؤال الحرف (${letters[index]}): في انتظار السؤال...`;
+  resetBuzzer();
+}
 
-// إدارة المؤقت التنازلي
 function startTimer() {
   clearInterval(timerInterval);
   timeLeft = 5;
@@ -156,190 +140,123 @@ function startTimer() {
     if (timerDisplay) timerDisplay.innerText = `الوقت: ${timeLeft} ثواني`;
 
     if (timeLeft > 0) {
-      AudioFX.tick(); // تكتكة المؤقت
+      AudioFX.tick();
     } else {
       clearInterval(timerInterval);
       if (timerDisplay) timerDisplay.innerText = "انتهى الوقت!";
-      AudioFX.timeOut(); // صوت انتهاء الوقت
+      AudioFX.timeOut();
     }
   }, 1000);
 }
 
-// إعادة تفعيل البازر
-function resetBuzzer() {
+window.resetBuzzer = function() {
   clearInterval(timerInterval);
-  timeLeft = 5;
-  if (timerDisplay) timerDisplay.innerText = `الوقت: 5 ثواني`;
+  if (timerDisplay) timerDisplay.innerText = "الوقت: 5 ثواني";
   if (buzzerStatus) {
     buzzerStatus.innerText = "البازر متاح الآن! بانتظار أسرع لاعب...";
-    buzzerStatus.style.background = "#2c3e50";
+    buzzerStatus.style.background = "#333";
+  }
+  db.ref('game/buzzer').set({ active: true, winner: null, team: null });
+};
+
+window.setCellColor = function(color) {
+  if (selectedIndex === null) return;
+  const cells = document.querySelectorAll('.cell');
+  const target = cells[selectedIndex];
+  if (!target) return;
+
+  target.classList.remove('green', 'red');
+  if (color === 'green') {
+    target.classList.add('green');
+    gridState[selectedIndex] = 'green';
+  } else if (color === 'red') {
+    target.classList.add('red');
+    gridState[selectedIndex] = 'red';
+  } else {
+    gridState[selectedIndex] = null;
   }
 
-  db.ref('game/buzzer').set({
-    active: true,
-    winner: null,
-    team: null
-  });
+  if (checkWin(color)) {
+    AudioFX.victory();
+    setTimeout(() => {
+      alert(`🎉 ألف مبروك! فاز الفريق ${color === 'green' ? 'الأخضر' : 'الأحمر'}!`);
+    }, 200);
+  }
+};
+
+function checkWin(color) {
+  if (!color || color === 'neutral') return false;
+  const size = 5;
+  const visited = Array(25).fill(false);
+  const queue = [];
+
+  for (let i = 0; i < size; i++) {
+    const startIdx = (color === 'green') ? i * size : i;
+    if (gridState[startIdx] === color) {
+      queue.push(startIdx);
+      visited[startIdx] = true;
+    }
+  }
+
+  while (queue.length > 0) {
+    const curr = queue.shift();
+    const r = Math.floor(curr / size);
+    const c = curr % size;
+
+    if ((color === 'green' && c === size - 1) || (color === 'red' && r === size - 1)) {
+      return true;
+    }
+
+    const neighbors = [
+      { r: r - 1, c: c }, { r: r + 1, c: c },
+      { r: r, c: c - 1 }, { r: r, c: c + 1 }
+    ];
+
+    for (const n of neighbors) {
+      if (n.r >= 0 && n.r < size && n.c >= 0 && n.c < size) {
+        const nextIdx = n.r * size + n.c;
+        if (!visited[nextIdx] && gridState[nextIdx] === color) {
+          visited[nextIdx] = true;
+          queue.push(nextIdx);
+        }
+      }
+    }
+  }
+  return false;
 }
 
-// الاستماع للبازر اللحظي من Firebase
+// استماع البازر اللحظي
 db.ref('game/buzzer').on('value', (snapshot) => {
   const data = snapshot.val();
   if (data && data.winner && buzzerStatus) {
     buzzerStatus.innerText = `🔔 ضغط البازر أولاً: ${data.winner} (الفريق ${data.team === 'green' ? 'الأخضر' : 'الأحمر'})`;
     buzzerStatus.style.background = data.team === 'green' ? '#27ae60' : '#c0392b';
-    db.ref('game/buzzer').on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (data && data.winner && buzzerStatus) {
-    buzzerStatus.innerText = `🔔 ضغط البازر أولاً: ${data.winner} (الفريق ${data.team === 'green' ? 'الأخضر' : 'الأحمر'})`;
-    buzzerStatus.style.background = data.team === 'green' ? '#27ae60' : '#c0392b';
-    AudioFX.buzzer(); // صوت رنين البازر
-    startTimer();
-  }
-});
+    AudioFX.buzzer();
     startTimer();
   }
 });
 
-// تلوين الخانة وفحص الفوز
-function setCellColor(color) {
-  if (!activeCell) {
-    alert('يرجى اختيار خانة أولاً');
-    return;
-  }
-  if (checkWin(color)) {
-  AudioFX.victory(); // صوت احتفال الفوز
-  setTimeout(() => {
-    alert(`🎉 ألف مبروك! فاز الفريق ${color === 'green' ? 'الأخضر' : 'الأحمر'} بإكمال المسار!`);
-  }, 300);
-}
-
-  clearInterval(timerInterval);
-  const r = parseInt(activeCell.dataset.row);
-  const c = parseInt(activeCell.dataset.col);
-  activeCell.classList.remove('green', 'red');
-
-  if (color === 'green' || color === 'red') {
-    activeCell.classList.add(color);
-    gridState[r][c] = color;
-
-    if (checkWin(color)) {
-      setTimeout(() => {
-        alert(`🎉 ألف مبروك! فاز الفريق ${color === 'green' ? 'الأخضر' : 'الأحمر'} بإكمال المسار!`);
-      }, 100);
-    }
-  } else {
-    gridState[r][c] = null;
-  }
-}
-
-// خوارزمية فحص الفوز (BFS)
-function checkWin(color) {
-  const visited = Array(5).fill(false).map(() => Array(5).fill(false));
-  const queue = [];
-
-  if (color === 'green') {
-    for (let r = 0; r < 5; r++) {
-      if (gridState[r][0] === color) {
-        queue.push([r, 0]);
-        visited[r][0] = true;
-      }
-    }
-  } else if (color === 'red') {
-    for (let c = 0; c < 5; c++) {
-      if (gridState[0][c] === color) {
-        queue.push([0, c]);
-        visited[0][c] = true;
-      }
-    }
-  }
-
-  const directions = [
-    [-1, 0], [1, 0], [0, -1], [0, 1]
-  ];
-
-  while (queue.length > 0) {
-    const [currR, currC] = queue.shift();
-
-    if (color === 'green' && currC === 4) return true;
-    if (color === 'red' && currR === 4) return true;
-
-    for (const [dr, dc] of directions) {
-      const nr = currR + dr;
-      const nc = currC + dc;
-
-      if (nr >= 0 && nr < 5 && nc >= 0 && nc < 5) {
-        if (!visited[nr][nc] && gridState[nr][nc] === color) {
-          visited[nr][nc] = true;
-          queue.push([nr, nc]);
-        }
-      }
-    }
-  }
-
-  return false;
-}
-// التأكد من توليد الباركود بعد اكتمال تحميل الصفحة والرابط
+// تهيئة اللوحة والباركود
 window.addEventListener('DOMContentLoaded', () => {
+  createBoard();
+  document.body.addEventListener('click', () => AudioFX.init(), { once: true });
+
   const qrContainer = document.getElementById("qrcode");
-  if (!qrContainer) return;
+  if (qrContainer && typeof QRCodeStyling !== 'undefined') {
+    qrContainer.innerHTML = '';
+    const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+    const playerUrl = cleanUrl.includes('index.html') 
+      ? cleanUrl.replace('index.html', 'player.html')
+      : (cleanUrl.endsWith('/') ? cleanUrl + 'player.html' : cleanUrl + '/player.html');
 
-  // تنظيف أي باركود قديم
-  qrContainer.innerHTML = '';
-
-  let currentUrl = window.location.href.split('?')[0].split('#')[0];
-  let playerUrl = '';
-
-  if (currentUrl.endsWith('index.html')) {
-    playerUrl = currentUrl.replace('index.html', 'player.html');
-  } else if (currentUrl.endsWith('/')) {
-    playerUrl = currentUrl + 'player.html';
-  } else {
-    playerUrl = currentUrl + '/player.html';
+    const qrCode = new QRCodeStyling({
+      width: 140,
+      height: 140,
+      type: "svg",
+      data: playerUrl,
+      dotsOptions: { color: "#000", type: "rounded" },
+      backgroundOptions: { color: "#fff" }
+    });
+    qrCode.append(qrContainer);
   }
-
- // في ملف app.js
-window.addEventListener('load', () => {
-  const qrContainer = document.getElementById("qrcode");
-  if (!qrContainer) return;
-
-  // تنظيف الحاوية
-  qrContainer.innerHTML = '';
-
-  // تحديد رابط صفحة اللاعب بدقة
-  let currentUrl = window.location.href.split('?')[0].split('#')[0];
-  let playerUrl = '';
-
-  if (currentUrl.includes('index.html')) {
-    playerUrl = currentUrl.replace('index.html', 'player.html');
-  } else if (currentUrl.endsWith('/')) {
-    playerUrl = currentUrl + 'player.html';
-  } else {
-    playerUrl = currentUrl + '/player.html';
-  }
-
-  // تهيئة وتوليد الـ QR Code بتنسيق عالي الجودة
-  const qrCode = new QRCodeStyling({
-    width: 150,
-    height: 150,
-    type: "svg",
-    data: playerUrl,
-    dotsOptions: {
-      color: "#000000",
-      type: "rounded"
-    },
-    backgroundOptions: {
-      color: "#ffffff",
-    },
-    cornersSquareOptions: {
-      type: "extra-rounded",
-      color: "#000000"
-    },
-    cornersDotOptions: {
-      color: "#000000"
-    }
-  });
-
-  qrCode.append(qrContainer);
-});
 });
