@@ -28,7 +28,23 @@
       <div class="buzzer-status" id="buzzerStatus">في انتظار الضغط على البازر...</div>
       
       <div class="board" id="board"></div>
+<!-- شريط الإعدادات السريعة -->
+<div id="settingsBar" style="display: flex; gap: 15px; align-items: center; justify-content: center; margin: 15px 0; background: #222; padding: 10px 20px; border-radius: 10px; border: 1px solid #333;">
+  <label style="color: #bbb; font-size: 14px;">مدة المؤقت:</label>
+  <select id="timerDurationSelect" onchange="updateTimerDuration(this.value)" style="padding: 6px 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 6px; cursor: pointer;">
+    <option value="3">3 ثواني</option>
+    <option value="5" selected>5 ثواني</option>
+    <option value="7">7 ثواني</option>
+    <option value="10">10 ثواني</option>
+    <option value="15">15 ثانية</option>
+  </select>
 
+  <label style="color: #bbb; font-size: 14px; margin-right: 15px;">
+    <input type="checkbox" id="muteToggle" onchange="toggleSound(this.checked)" style="cursor: pointer;"> كتم الصوت
+  </label>
+
+  <button type="button" onclick="resetFullGame()" style="padding: 6px 12px; background: #555; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">تصفير اللوحة بالكامل</button>
+</div>
       <div class="controls">
         <button class="btn green-btn" onclick="setCellColor('green')">فوز الأخضر</button>
         <button class="btn red-btn" onclick="setCellColor('red')">فوز الأحمر</button>
